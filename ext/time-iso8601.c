@@ -108,18 +108,10 @@ static time_t
 time_iso8601_strptime(const char * str, int len)
 {
 	struct tm time;
-	time.tm_sec = 0;
-	time.tm_min = 0;
-	time.tm_hour = 0;
-	time.tm_mday = 1;
-	time.tm_mon = 0;
-	time.tm_year = 113;
-	time.tm_isdst = 1;
-	time.tm_zone = 0;
 
-	/*char * pe = strptime(str, "%FT%T", &time);
+	char * pe = strptime(str, "%FT%T", &time);
 	if (pe == NULL)
-		return Qnil;*/
+		return Qnil;
 
 	/* need to parse zone info */
 	/* if (pe - str < len) */
