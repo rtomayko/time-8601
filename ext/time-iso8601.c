@@ -128,16 +128,22 @@ time_iso8601_strptime(const char * str, int len)
 static VALUE
 rb_time_iso8601_strptime(VALUE self, VALUE str)
 {
+	VALUE time;
+	time_t t;
+
 	/* minumum possible ISO8601 strict time value */
 	if (RSTRING_LEN(str) < 16)
 		rb_raise(rb_eArgError, "invalid date: %p", (void*)str);
 
-	time_t t = time_iso8601_strptime(StringValueCStr(str), RSTRING_LEN(str));
+	t = time_iso8601_strptime(StringValueCStr(str), RSTRING_LEN(str));
 
 	if (t == -1)
 		rb_raise(rb_eArgError, "invalid date: %p", (void*)str);
 
-	return rb_funcall(rb_cTime, id_at, 1, INT2FIX((int)t));
+	time = rb_funcall(rb_cTime, id_at, 1, INT2FIX((int)t));
+	rb_funcall(time, id_utc, 0);
+
+	return time;
 }
 
 VALUE
