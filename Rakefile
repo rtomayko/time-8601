@@ -35,5 +35,5 @@ end
 # Tests =====================================================================
 
 task :test => [:compile] do
-  ruby "-I", "lib", "-r", "time-iso8601", "-e", "0"
+  ruby "-I", "lib", "test/time_iso8601_test.rb"
 end
