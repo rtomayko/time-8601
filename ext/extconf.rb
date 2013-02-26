@@ -6,4 +6,4 @@ $LDFLAGS = "-w"
 $CFLAGS = "-pedantic -Wall -Wno-long-long -Winline"
 
 dir_config 'time-iso8601'
-create_makefile 'time-iso8601'
+create_makefile 'time_iso8601'

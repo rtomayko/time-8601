@@ -27,7 +27,6 @@ VALUE
 Init_time_iso8601() {
     /* bring in time.rb and time.c */
     rb_require("time");
-    rb_cTime = rb_define_class("Time", rb_cObject);
 
     /* Time class methods */
     rb_define_singleton_method(rb_cTime, "iso8601_strict", rb_time_iso8601_strict, -1);
