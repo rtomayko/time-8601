@@ -12,6 +12,7 @@
 
 static ID id_iso8601;         /* :iso8601 */
 static ID id_iso8601_strict;  /* :iso8601_strict */
+static ID id_at;              /* :at */
 static ID id_new;             /* :new */
 static ID id_utc;             /* :utc */
 static ID id_mktime;          /* :mktime */
@@ -22,7 +23,7 @@ time_iso8601_strict(char * str, int len)
 	VALUE time = Qnil;
 	char * ps = str;
 	char * pe;
-	int year, mon, day, hour, min, sec, tz;
+	int year, mon, day, hour, min, sec;
 
 	year = strtol(ps, &pe, 10);
 	if (pe > ps && *pe == '-')
@@ -103,15 +104,55 @@ rb_time_iso8601_strict(VALUE self, VALUE str)
 	return time;
 }
 
+static time_t
+time_iso8601_strptime(const char * str, int len)
+{
+	struct tm time;
+	time.tm_sec = 0;
+	time.tm_min = 0;
+	time.tm_hour = 0;
+	time.tm_mday = 1;
+	time.tm_mon = 0;
+	time.tm_year = 113;
+	time.tm_isdst = 1;
+	time.tm_zone = 0;
+
+	/*char * pe = strptime(str, "%FT%T", &time);
+	if (pe == NULL)
+		return Qnil;*/
+
+	/* need to parse zone info */
+	/* if (pe - str < len) */
+
+	return mktime(&time);
+}
+
+static VALUE
+rb_time_iso8601_strptime(VALUE self, VALUE str)
+{
+	/* minumum possible ISO8601 strict time value */
+	if (RSTRING_LEN(str) < 16)
+		rb_raise(rb_eArgError, "invalid date: %p", (void*)str);
+
+	time_t t = time_iso8601_strptime(StringValueCStr(str), RSTRING_LEN(str));
+
+	if (t == -1)
+		rb_raise(rb_eArgError, "invalid date: %p", (void*)str);
+
+	return rb_funcall(rb_cTime, id_at, 1, INT2FIX((int)t));
+}
+
 VALUE
 Init_time_iso8601() {
 	/* bring in time.rb and time.c */
 	rb_require("time");
 
 	/* Time class methods */
-	rb_define_singleton_method(rb_cTime, "iso8601_strict", rb_time_iso8601_strict, 1);
+	rb_define_singleton_method(rb_cTime, "iso8601_strict",   rb_time_iso8601_strict, 1);
+	rb_define_singleton_method(rb_cTime, "iso8601_strptime", rb_time_iso8601_strptime, 1);
 
 	/* symbols */
+	id_at = rb_intern("at");
 	id_new = rb_intern("new");
 	id_mktime = rb_intern("mktime");
 	id_utc = rb_intern("utc");

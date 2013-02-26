@@ -69,6 +69,10 @@ bm(40) do |benchmark|
       iterations.times { Time.iso8601_strict(string) }
     end
 
+    benchmark.report "  Time::iso8601_strptime" do
+      iterations.times { Time.iso8601_strptime(string) }
+    end
+
     benchmark.report "  Time::iso8601" do
       iterations.times { Time.iso8601(string) }
     end
