@@ -11,7 +11,7 @@ formats are accepted:
  - `2013-02-25T18:30:00.007` - Time with usec. Optional with any timezone format.
 
 The library is designed to minimize overhead in constructing many Time objects
-from time strings. Both CPU use and object allocation overhead are minimized.
+from time strings, both CPU use and object allocation are minimized.
 
 Benchmarks
 ----------
@@ -29,19 +29,24 @@ contrast.
       Time::new with args, no tz offset        0.010000   0.010000   0.020000 (  0.010604)
       Time::new with args and tz offset        0.000000   0.000000   0.000000 (  0.003347)
 
-    Parsing 2013-02-25T01:48:14 (1000x)
-      Time::iso8601                            0.010000   0.000000   0.010000 (  0.013720)
-      Time::strptime                           0.020000   0.000000   0.020000 (  0.013743)
-      Marshal::load                            0.000000   0.000000   0.000000 (  0.006584)
-
-    Parsing 2013-02-25T01:48:14Z (1000x)
-      Time::iso8601                            0.020000   0.000000   0.020000 (  0.013641)
-      Time::strptime                           0.020000   0.000000   0.020000 (  0.014569)
-      Marshal::load                            0.000000   0.000000   0.000000 (  0.003534)
-
-    Parsing 2013-02-25T01:48:14-05:00 (1000x)
+    Parsing "2013-02-25T01:48:14-05:00" (1000x)
       Time::iso8601                            0.010000   0.000000   0.010000 (  0.015421)
       Time::strptime                           0.010000   0.000000   0.010000 (  0.014631)
       Marshal::load                            0.010000   0.000000   0.010000 (  0.003465)
 
     GC: 1 runs, 0.000000s
+
+`Time::iso8601` is roughly 4x slower than `Time::new` with same arguments and is
+30x slower than `Time::new` without arguments (current time).
+
+Submission Status
+-----------------
+
+If a good implementation can be reached, patches will be submitted to Ruby core
+to replace the existing `Time::iso8601` implementation in `time.rb`. This hasn't
+happened.
+
+License
+-------
+
+COPYRIGHT (C) 2013 BY   R Y A N   T O M A Y K O   <http://tomayko.com>
