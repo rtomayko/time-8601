@@ -92,11 +92,13 @@ time_iso8601_strict(char * str, int len)
 static VALUE
 rb_time_iso8601_strict(VALUE self, VALUE str)
 {
+	VALUE time;
+
 	/* minumum possible ISO8601 strict time value */
 	if (RSTRING_LEN(str) < 16)
 		rb_raise(rb_eArgError, "invalid date: %p", (void*)str);
 
-	VALUE time = time_iso8601_strict(StringValueCStr(str), RSTRING_LEN(str));
+	time = time_iso8601_strict(StringValueCStr(str), RSTRING_LEN(str));
 
 	if (NIL_P(time))
 		rb_raise(rb_eArgError, "invalid date: %p", (void*)str);
@@ -108,15 +110,19 @@ static time_t
 time_iso8601_strptime(const char * str, int len)
 {
 	struct tm time;
+	char * pe;
 
-	char * pe = strptime(str, "%FT%T", &time);
-	if (pe == NULL)
-		return Qnil;
+	if ((pe = strptime(str, "%FT%T", &time)))
+	{
+		/* need to parse zone info */
+		/* if (pe - str < len) */
 
-	/* need to parse zone info */
-	/* if (pe - str < len) */
-
-	return mktime(&time);
+		return mktime(&time);
+	}
+	else
+	{
+		return -1;
+	}
 }
 
 static VALUE
