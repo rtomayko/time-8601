@@ -1,10 +1,12 @@
 require 'rake/clean'
 
-task :default => [:compile, :test]
+task :default => [:compile, :test, :benchmark]
+
+# Benchmarks ================================================================
 
 desc "Run benchmarks"
-task :benchmark do
-  ruby "iso8601-bench.rb"
+task :benchmark => [:compile] do
+  ruby "-I", "lib", "script/benchmark.rb"
 end
 
 # Extension build ===========================================================
