@@ -1,6 +1,6 @@
 puts RUBY_DESCRIPTION if defined?(RUBY_DESCRIPTION)
 
-GC::Profiler.enable
+GC::Profiler.enable if defined?(GC::Profiler)
 GC.disable
 
 require 'time'
@@ -68,5 +68,7 @@ bm(40) do |benchmark|
   end
 end
 
-puts
-puts "GC: %d runs, %0.6fs" % [GC.count, GC::Profiler.total_time]
+if defined?(GC::Profiler)
+  puts
+  puts "GC: %d runs, %0.6fs" % [GC.count, GC::Profiler.total_time]
+end
