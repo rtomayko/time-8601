@@ -13,9 +13,9 @@ def iso8601_local(date)
   tz = date[19..-1]
   if tz != ""
     offset = (tz == 'Z' ? 0 : (tz[1, 2].to_i * 60) + tz[4, 2].to_i)
-    new(year.to_i, mon.to_i, day.to_i, hour.to_i, min.to_i, sec.to_i, offset)
+    Time.new(year.to_i, mon.to_i, day.to_i, hour.to_i, min.to_i, sec.to_i, offset)
   else
-    new(year.to_i, mon.to_i, day.to_i, hour.to_i, min.to_i, sec.to_i)
+    Time.new(year.to_i, mon.to_i, day.to_i, hour.to_i, min.to_i, sec.to_i)
   end
 end
 
@@ -55,7 +55,7 @@ bm(40) do |benchmark|
     end
 
     benchmark.report "  Time::iso8601_local" do
-      iterations.times { Time.iso8601_local(string) }
+      iterations.times { iso8601_local(string) }
     end
 
     benchmark.report "  Time::strptime" do
