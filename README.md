@@ -1,6 +1,8 @@
 Time::iso8601
 =============
 
+**THIS PROJECT IS UNDER CONSTRUCTION. NOTHING TO SEE HERE YET REALLY.**
+
 An efficient `Time::iso8601` implementation for Ruby. This doesn't implement all
 of ISO8601, only the simple format supported by ruby core's `time.rb`. These
 formats are accepted:
