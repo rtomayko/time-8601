@@ -73,8 +73,6 @@ class TimeISO8601Test < MiniTest::Unit::TestCase
   def test_explicit_zone_utc
     time = Time.iso8601_at("2013-02-25T18:30:00+00:00")
     assert_equal 0, time.utc_offset
-    time.utc # TODO <- shouldn't need that
     assert time.utc?, "should be UTC"
-    skip
   end
 end
