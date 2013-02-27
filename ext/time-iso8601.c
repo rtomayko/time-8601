@@ -44,8 +44,7 @@ time_iso8601_strptime(const char * str, int len)
 
 	if ((pz = strptime(str, "%FT%T", &tm)))
 	{
-		tm.tm_isdst = -1;
-		time_t t = mktime(&tm);
+		time_t t = timegm(&tm);
 		VALUE time;
 
 		/* need to parse zone info */
@@ -54,7 +53,6 @@ time_iso8601_strptime(const char * str, int len)
 
 			if (utc_offset == 0) {
 				/* utc time */
-				t -= utc_offset;
 				time = rb_funcall(rb_cTime, id_at, 1, INT2FIX(t));
 				rb_funcall(time, id_utc, 0);
 			} else {
