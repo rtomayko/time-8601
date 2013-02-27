@@ -37,6 +37,27 @@ _strtol(const char *str, const char **out)
 	return n;
 }
 
+static time_t
+time_iso8601_mktime(struct tm *time)
+{
+	unsigned int mon = time->tm_mon, year = time->tm_year;
+
+	/* 1..12 -> 11,12,1..10 */
+	if (0 >= (int) (mon -= 2)) {
+		mon += 12;      /* Puts Feb last since it has leap day */
+		year -= 1;
+	}
+	year += 1900;
+	mon += 1;
+
+	return ((((unsigned long)
+	            (year/4 - year/100 + year/400 + 367*mon/12 + time->tm_mday) +
+	            year*365 - 719499
+	                  )*24 + time->tm_hour   /* now have hours */
+	                  )*60 + time->tm_min    /* now have minutes */
+	                  )*60 + time->tm_sec;   /* finally seconds */
+}
+
 static VALUE
 time_iso8601_strict(const char * str)
 {
@@ -78,7 +99,7 @@ time_iso8601_strict(const char * str)
 
 	if (*pe == '\0')
 	{
-		return rb_time_new(mktime(&tdata), 0);
+		return rb_time_new(time_iso8601_mktime(&tdata), 0);
 	}
 	else
 	{
@@ -89,7 +110,7 @@ time_iso8601_strict(const char * str)
 		{
 			case 'Z': /* utc timezone */
 			{
-				VALUE utc_time = rb_time_new(timegm(&tdata), 0);
+				VALUE utc_time = rb_time_new(time_iso8601_mktime(&tdata), 0);
 				rb_funcall(utc_time, id_utc, 0);
 				return utc_time;
 			}
