@@ -64,6 +64,7 @@ time_iso8601_strict(const char * str)
 	const char * ps = str;
 	const char * pe;
 	struct tm tdata;
+	time_t utc_time;
 
 	memset(&tdata, 0x0, sizeof(struct tm));
 	tdata.tm_isdst = -1;
@@ -97,23 +98,24 @@ time_iso8601_strict(const char * str)
 	if (pe == ps || tdata.tm_sec < 0 || tdata.tm_sec > 61)
 		return Qnil;
 
+	utc_time = time_iso8601_mktime(&tdata);
+
 	if (*pe == '\0')
 	{
-		return rb_time_new(time_iso8601_mktime(&tdata), 0);
+		return rb_time_new(utc_time + timezone, 0);
 	}
 	else
 	{
+		VALUE rb_time;
 		int hours, mins, offset;
 		int negative = 0; 
 
 		switch(*pe)
 		{
 			case 'Z': /* utc timezone */
-			{
-				VALUE utc_time = rb_time_new(time_iso8601_mktime(&tdata), 0);
-				rb_funcall(utc_time, id_utc, 0);
-				return utc_time;
-			}
+				rb_time = rb_time_new(utc_time, 0);
+				rb_funcall(rb_time, id_utc, 0);
+				return rb_time;
 
 			case '-':
 				negative = 1;
@@ -134,15 +136,9 @@ time_iso8601_strict(const char * str)
 				if (negative)
 					offset = -offset;
 
-				return rb_funcall(rb_cTime, id_new, 7,
-					INT2FIX(tdata.tm_year + 1900),
-					INT2FIX(tdata.tm_mon + 1),
-					INT2FIX(tdata.tm_mday),
-					INT2FIX(tdata.tm_hour),
-					INT2FIX(tdata.tm_min),
-					INT2FIX(tdata.tm_sec),
-					INT2FIX(offset)
-				);
+				rb_time = rb_time_new(utc_time - offset, 0);
+				rb_funcall(rb_time, rb_intern("localtime"), 1, INT2FIX(offset));
+				return rb_time;
 		}
 	}
 
