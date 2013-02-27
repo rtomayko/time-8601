@@ -22,7 +22,7 @@ _isdigit(char c)
 	return (c >= '0' && c <= '9');
 }
 
-static int
+static inline int
 _strtol(const char *str, const char **out)
 {
 	int n = 0;
@@ -40,63 +40,88 @@ _strtol(const char *str, const char **out)
 static VALUE
 time_iso8601_strict(const char * str, int len)
 {
-	VALUE time = Qnil;
 	const char * ps = str;
 	const char * pe;
-	int year, mon, day, hour, min, sec;
+	struct tm tdata;
 
-	year = _strtol(ps, &pe);
+	memset(&tdata, 0x0, sizeof(struct tm));
+	tdata.tm_isdst = -1;
+
+	tdata.tm_year = _strtol(ps, &pe) - 1900;
 	if (pe == ps || *pe != '-')
 		return Qnil;
 	
 	ps = pe + 1;
-	mon = _strtol(ps, &pe);
-	if (pe == ps || *pe != '-' || mon < 1 || mon > 12)
+	tdata.tm_mon = _strtol(ps, &pe) - 1;
+	if (pe == ps || *pe != '-' || tdata.tm_mon < 1 || tdata.tm_mon > 12)
 		return Qnil;
 
 	ps = pe + 1;
-	day = _strtol(ps, &pe);
-	if (pe == ps || *pe != 'T' || day < 1 || day > 31)
+	tdata.tm_mday = _strtol(ps, &pe);
+	if (pe == ps || *pe != 'T' || tdata.tm_mday < 1 || tdata.tm_mday > 31)
 		return Qnil;
 
 	ps = pe + 1;
-	hour = _strtol(ps, &pe);
-	if (pe == ps || *pe != ':' || hour < 0 || hour > 24)
+	tdata.tm_hour = _strtol(ps, &pe);
+	if (pe == ps || *pe != ':' || tdata.tm_hour < 0 || tdata.tm_hour > 24)
 		return Qnil;
 
 	ps = pe + 1;
-	min = _strtol(ps, &pe);
-	if (pe == ps || *pe != ':' || min < 0 || min > 61)
+	tdata.tm_min = _strtol(ps, &pe);
+	if (pe == ps || *pe != ':' || tdata.tm_min < 0 || tdata.tm_min > 61)
 		return Qnil;
 
 	ps = pe + 1;
-	sec = _strtol(ps, &pe);
-	if (pe == ps || sec < 0 || sec > 61)
+	tdata.tm_sec = _strtol(ps, &pe);
+	if (pe == ps || tdata.tm_sec < 0 || tdata.tm_sec > 61)
 		return Qnil;
 
 	if (pe >= (str + len))
 	{
-		/* no timezone, use local time */
-		return rb_funcall(rb_cTime, id_mktime, 6,
-						  INT2FIX(year), INT2FIX(mon), INT2FIX(day),
-						  INT2FIX(hour), INT2FIX(min), INT2FIX(sec));
+		return rb_time_new(mktime(&tdata), 0);
 	}
 	else
 	{
-		ps = pe;
-		switch(*ps)
+		int hours, mins, offset;
+		int negative = 0; 
+
+		switch(*pe)
 		{
 			case 'Z': /* utc timezone */
-				return rb_funcall(rb_cTime, id_utc, 6,
-								  INT2FIX(year), INT2FIX(mon), INT2FIX(day),
-								  INT2FIX(hour), INT2FIX(min), INT2FIX(sec));
+			{
+				VALUE utc_time = rb_time_new(timegm(&tdata), 0);
+				rb_funcall(utc_time, id_utc, 0);
+				return utc_time;
+			}
+
+			case '-':
+				negative = 1;
+				/* fall through */
 
 			case '+':
-			case '-':
+				ps = pe + 1;
+				hours = _strtol(ps, &pe);
+				if (pe == ps || hours < 0 || hours >= 14)
+					return Qnil;
+
+				ps = pe + 1;
+				mins = _strtol(ps, &pe);
+				if (pe == ps || mins < 0 || mins > 59)
+					return Qnil;
+
+				offset = (mins * 60) + (hours * 60 * 60);
+				if (negative)
+					offset = -offset;
+
 				return rb_funcall(rb_cTime, id_new, 7,
-								  INT2FIX(year), INT2FIX(mon), INT2FIX(day),
-								  INT2FIX(hour), INT2FIX(min), INT2FIX(sec),
-								  rb_str_new(ps, len - (ps - str)));
+					INT2FIX(tdata.tm_year + 1900),
+					INT2FIX(tdata.tm_mon + 1),
+					INT2FIX(tdata.tm_mday),
+					INT2FIX(tdata.tm_hour),
+					INT2FIX(tdata.tm_min),
+					INT2FIX(tdata.tm_sec),
+					INT2FIX(offset)
+				);
 		}
 	}
 
