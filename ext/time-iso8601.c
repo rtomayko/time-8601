@@ -66,13 +66,13 @@ time_iso8601_strzone(const char * pz, int len)
 static VALUE
 time_iso8601_strptime(const char * str, int len)
 {
-	struct tm time;
+	struct tm tm;
 	char * pz;
 
-	if ((pz = strptime(str, "%FT%T", &time)))
+	if ((pz = strptime(str, "%FT%T", &tm)))
 	{
-		time_t t = time_iso8601_mktime(&time);
-		VALUE res;
+		time_t t = time_iso8601_mktime(&tm);
+		VALUE time;
 
 		/* need to parse zone info */
 		if (pz - str < len) {
@@ -81,20 +81,24 @@ time_iso8601_strptime(const char * str, int len)
 			if (utc_offset == 0) {
 				/* utc time */
 				t -= utc_offset;
-				res = rb_funcall(rb_cTime, id_at, 1, INT2FIX(t));
-				rb_funcall(res, id_utc, 0);
+				time = rb_funcall(rb_cTime, id_at, 1, INT2FIX(t));
+
+				struct time_object *tobj;
+				GetTimeval(time, tobj);
+				TIME_SET_UTC(tobj);
 			} else {
 				/* explicit zone */
 				t -= utc_offset;
-				res = rb_funcall(rb_cTime, id_at, 1, INT2FIX(t));
-				rb_funcall(res, id_localtime, 1, INT2FIX(utc_offset));
+				time = rb_funcall(rb_cTime, id_at, 1, INT2FIX(t));
+				rb_funcall(time, id_localtime, 1, INT2FIX(utc_offset));
 			}
 		} else {
+			/* no zone, use local time */
 			t += timezone;
-			res = rb_funcall(rb_cTime, id_at, 1, INT2FIX(t));
+			time = rb_funcall(rb_cTime, id_at, 1, INT2FIX(t));
 		}
 
-		return res;
+		return time;
 	}
 	else
 	{
