@@ -15,64 +15,140 @@ static ID id_utc;             /* :utc */
 static ID id_localtime;       /* :localtime */
 static ID id_mktime;          /* :mktime */
 
+static inline int
+_isdigit(char c)
+{
+	return (c >= '0' && c <= '9');
+}
+
+static inline int
+_strtol(const char *str, const char **out)
+{
+	int n = 0;
+
+	while (_isdigit(*str))
+	{
+		n *= 10;
+		n += *str++ - '0';
+	}
+
+	*out = str;
+	return n;
+}
+
 static int
-time_iso8601_strzone(const char * pz, int len)
+_strzone(const char * pz, int * utc_offset)
 {
 	int offset = 0;
 	int sec;
 	char * pe;
 
-	if (pz[0] == 'Z')
+	if (pz[0] == 'Z') {
+		*utc_offset = 0;
+		return 1;
+	}
+
+	offset = _strtol(pz, &pe);
+	if (pz == pe)
 		return 0;
 
-	offset = strtol(pz, &pe, 10);
-	if (*pe == ':') {
+	if (*pe == ':')
+	{
 		offset *= 60 * 60;
-		sec = strtol(pe + 1, &pe, 10) * 60;
+		sec = _strtol(pe + 1, &pe) * 60;
 		if (offset < 0) sec *= -1;
 		offset += sec;
 	}
+	*utc_offset = offset;
 
-	return offset;
+	return 1;
 }
 
 static VALUE
-time_iso8601_strptime(const char * str, int len)
+_strtime(const char * str, struct tm * tdata, int * utc_offset)
 {
-	struct tm tm;
-	char * pz;
+	const char * ps = str;
+	const char * pe;
 
-	if ((pz = strptime(str, "%FT%T", &tm)))
-	{
-		time_t t = timegm(&tm);
-		VALUE time;
+	tdata->tm_isdst = -1;
 
-		/* need to parse zone info */
-		if (pz - str < len) {
-			int utc_offset = time_iso8601_strzone(pz, len - (pz - str));
+	tdata->tm_year = _strtol(ps, &pe) - 1900;
+	if (pe == ps || *pe != '-')
+		return 0;
 
-			if (utc_offset == 0) {
-				/* utc time */
-				time = rb_funcall(rb_cTime, id_at, 1, INT2FIX(t));
-				rb_funcall(time, id_utc, 0);
-			} else {
-				/* explicit zone */
-				t -= utc_offset;
-				time = rb_funcall(rb_cTime, id_at, 1, INT2FIX(t));
-				rb_funcall(time, id_localtime, 1, INT2FIX(utc_offset));
-			}
-		} else {
-			/* no zone, use local time */
-			t += timezone;
-			time = rb_funcall(rb_cTime, id_at, 1, INT2FIX(t));
-		}
+	ps = pe + 1;
+	tdata->tm_mon = _strtol(ps, &pe) - 1;
+	if (pe == ps || *pe != '-' || tdata->tm_mon < 1 || tdata->tm_mon > 12)
+		return 0;
 
-		return time;
+	ps = pe + 1;
+	tdata->tm_mday = _strtol(ps, &pe);
+	if (pe == ps || *pe != 'T' || tdata->tm_mday < 1 || tdata->tm_mday > 31)
+		return 0;
+
+	ps = pe + 1;
+	tdata->tm_hour = _strtol(ps, &pe);
+	if (pe == ps || *pe != ':' || tdata->tm_hour < 0 || tdata->tm_hour > 24)
+		return 0;
+
+	ps = pe + 1;
+	tdata->tm_min = _strtol(ps, &pe);
+	if (pe == ps || *pe != ':' || tdata->tm_min < 0 || tdata->tm_min > 61)
+		return 0;
+
+	ps = pe + 1;
+	tdata->tm_sec = _strtol(ps, &pe);
+	if (pe == ps || tdata->tm_sec < 0 || tdata->tm_sec > 61)
+		return 0;
+
+	ps = pe;
+	if (*ps == '\0') {
+		/* no zone, use local time */
+		*utc_offset = timezone;
+		return 1;
 	}
 	else
 	{
-		rb_raise(rb_eArgError, "invalid date: %s", str);
+		/* need to parse zone info */
+		return _strzone(ps, utc_offset);
 	}
+}
+
+static VALUE
+time_iso8601_parse(const char * str)
+{
+	VALUE time;
+	char * pz;
+	time_t utc_time;
+	int utc_offset;
+	struct tm tdata;
+	memset(&tdata, 0x0, sizeof(struct tm));
+
+	if (_strtime(str, &tdata, &utc_offset))
+	{
+		utc_time = timegm(&tdata);
+		if (utc_offset == 0) {
+			time = rb_funcall(rb_cTime, id_at, 1, INT2FIX(utc_time));
+			rb_funcall(time, id_utc, 0);
+		}
+		else if (utc_offset == timezone)
+		{
+			utc_time += timezone;
+			time = rb_funcall(rb_cTime, id_at, 1, INT2FIX(utc_time));
+		}
+		else
+		{
+			utc_time -= utc_offset;
+			time = rb_funcall(rb_cTime, id_at, 1, INT2FIX(utc_time));
+			rb_funcall(time, id_localtime, 1, INT2FIX(utc_offset));
+		}
+	}
+	else
+	{
+		rb_raise(rb_eArgError, "invalid date: %s", (void*)str);
+	}
+
+	return time;
 }
 
 static VALUE
@@ -84,9 +160,9 @@ rb_time_iso8601_at(VALUE self, VALUE str)
 
 	/* minumum possible ISO8601 strict time value */
 	if (RSTRING_LEN(str) < 16)
-		rb_raise(rb_eArgError, "invalid date: %s", (void*)StringValueCStr(str));
+		rb_raise(rb_eArgError, "invalid date: %s (too short)", (void*)StringValueCStr(str));
 
-	time = time_iso8601_strptime(StringValueCStr(str), RSTRING_LEN(str));
+	time = time_iso8601_parse(StringValueCStr(str));
 
 	return time;
 }
