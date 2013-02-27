@@ -48,8 +48,7 @@ _strzone(const char * pz, int * utc_offset)
 		*utc_offset = 0;
 		return 1;
 	}
-
-	if (*pz == '+')
+	else if (*pz == '+')
 	{
 		mul = 1;
 		pz++;
@@ -58,6 +57,10 @@ _strzone(const char * pz, int * utc_offset)
 	{
 		mul = -1;
 		pz++;
+	}
+	else
+	{
+		return 0;
 	}
 
 	offset = _strtol(pz, &pe);
