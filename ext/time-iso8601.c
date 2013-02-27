@@ -141,7 +141,8 @@ time_iso8601_parse(const char * str)
 
 	if (_strtime(str, &tdata, &utc_offset))
 	{
-		utc_time = timegm(&tdata);
+		utc_time = mktime(&tdata) - timezone;
+
 		if (utc_offset == 0) {
 			time = rb_time_new(utc_time, 0);
 			rb_funcall(time, id_utc, 0);
