@@ -39,13 +39,25 @@ _strtol(const char *str, const char **out)
 static int
 _strzone(const char * pz, int * utc_offset)
 {
-	int offset = 0;
 	int sec;
-	char * pe;
+	const char * pe;
+	int mul;
+	int offset = 0;
 
 	if (pz[0] == 'Z') {
 		*utc_offset = 0;
 		return 1;
+	}
+
+	if (*pz == '+')
+	{
+		mul = 1;
+		pz++;
+	}
+	else if (*pz == '-')
+	{
+		mul = -1;
+		pz++;
 	}
 
 	offset = _strtol(pz, &pe);
@@ -56,9 +68,10 @@ _strzone(const char * pz, int * utc_offset)
 	{
 		offset *= 60 * 60;
 		sec = _strtol(pe + 1, &pe) * 60;
-		if (offset < 0) sec *= -1;
 		offset += sec;
 	}
+
+	offset *= mul;
 	*utc_offset = offset;
 
 	return 1;
@@ -118,7 +131,6 @@ static VALUE
 time_iso8601_parse(const char * str)
 {
 	VALUE time;
-	char * pz;
 	time_t utc_time;
 	int utc_offset;
 	struct tm tdata;
