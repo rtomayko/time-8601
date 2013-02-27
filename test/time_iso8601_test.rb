@@ -85,4 +85,9 @@ class TimeISO8601Test < MiniTest::Unit::TestCase
     assert_raises(ArgumentError) { Time.iso8601_at("2013-12-21") }
     assert_raises(ArgumentError) { Time.iso8601_at("2013-12-21 00:00:00") }
   end
+
+  def test_small_times
+    assert expect = Time.iso8601("0001-01-01T00:00:00Z")
+    assert_equal expect, Time.iso8601_at("0001-01-01T00:00:00Z"), expect.to_s
+  end
 end
