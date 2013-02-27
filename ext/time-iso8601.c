@@ -71,7 +71,7 @@ time_iso8601_strptime(const char * str, int len)
 	}
 	else
 	{
-		rb_raise(rb_eArgError, "invalid date: %p", (void*)str);
+		rb_raise(rb_eArgError, "invalid date: %s", str);
 	}
 }
 
@@ -80,9 +80,11 @@ rb_time_iso8601_at(VALUE self, VALUE str)
 {
 	VALUE time;
 
+	Check_Type(str, T_STRING);
+
 	/* minumum possible ISO8601 strict time value */
 	if (RSTRING_LEN(str) < 16)
-		rb_raise(rb_eArgError, "invalid date: %p", (void*)str);
+		rb_raise(rb_eArgError, "invalid date: %s", (void*)StringValueCStr(str));
 
 	time = time_iso8601_strptime(StringValueCStr(str), RSTRING_LEN(str));
 

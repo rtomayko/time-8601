@@ -75,4 +75,14 @@ class TimeISO8601Test < MiniTest::Unit::TestCase
     assert_equal 0, time.utc_offset
     assert time.utc?, "should be UTC"
   end
+
+  def test_nil_time
+    assert_raises(TypeError) { Time.iso8601_at(nil) }
+  end
+
+  def test_bad_times
+    assert_raises(ArgumentError) { Time.iso8601_at("blah") }
+    assert_raises(ArgumentError) { Time.iso8601_at("2013-12-21") }
+    assert_raises(ArgumentError) { Time.iso8601_at("2013-12-21 00:00:00") }
+  end
 end
