@@ -12,7 +12,6 @@
 
 static ID id_iso8601;         /* :iso8601 */
 static ID id_iso8601_strict;  /* :iso8601_strict */
-static ID id_at;              /* :at */
 static ID id_new;             /* :new */
 static ID id_utc;             /* :utc */
 static ID id_mktime;          /* :mktime */
@@ -98,7 +97,7 @@ rb_time_iso8601_strict(VALUE self, VALUE str)
 	if (RSTRING_LEN(str) < 16)
 		rb_raise(rb_eArgError, "invalid date: %p", (void*)str);
 
-	time = time_iso8601_strict(StringValueCStr(str), RSTRING_LEN(str));
+	time = time_iso8601_strict(RSTRING_PTR(str), RSTRING_LEN(str));
 
 	if (NIL_P(time))
 		rb_raise(rb_eArgError, "invalid date: %p", (void*)str);
@@ -135,12 +134,12 @@ rb_time_iso8601_strptime(VALUE self, VALUE str)
 	if (RSTRING_LEN(str) < 16)
 		rb_raise(rb_eArgError, "invalid date: %p", (void*)str);
 
-	t = time_iso8601_strptime(StringValueCStr(str), RSTRING_LEN(str));
+	t = time_iso8601_strptime(RSTRING_PTR(str), RSTRING_LEN(str));
 
 	if (t == -1)
 		rb_raise(rb_eArgError, "invalid date: %p", (void*)str);
 
-	time = rb_funcall(rb_cTime, id_at, 1, INT2FIX((int)t));
+	time = rb_time_new(t, 0);
 	rb_funcall(time, id_utc, 0);
 
 	return time;
@@ -156,7 +155,6 @@ Init_time_iso8601() {
 	rb_define_singleton_method(rb_cTime, "iso8601_strptime", rb_time_iso8601_strptime, 1);
 
 	/* symbols */
-	id_at = rb_intern("at");
 	id_new = rb_intern("new");
 	id_mktime = rb_intern("mktime");
 	id_utc = rb_intern("utc");
