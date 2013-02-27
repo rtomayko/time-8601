@@ -7,9 +7,6 @@
 #include <ruby.h>
 #include <time.h>
 
-#define FLOOR(a) lrintf(floorf(a))
-#define FLOAT(a) (float)a
-
 static ID id_iso8601;         /* :iso8601 */
 static ID id_iso8601_strict;  /* :iso8601_strict */
 static ID id_at;              /* :at */
