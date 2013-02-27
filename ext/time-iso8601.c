@@ -94,7 +94,7 @@ _strtime(const char * str, struct tm * tdata, int * utc_offset)
 
 	ps = pe + 1;
 	tdata->tm_mon = _strtol(ps, &pe) - 1;
-	if (pe == ps || *pe != '-' || tdata->tm_mon < 1 || tdata->tm_mon > 12)
+	if (pe == ps || *pe != '-' || tdata->tm_mon < 0 || tdata->tm_mon > 11)
 		return 0;
 
 	ps = pe + 1;
