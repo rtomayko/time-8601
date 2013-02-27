@@ -41,7 +41,7 @@ _strzone(const char * pz, int * utc_offset)
 {
 	int sec;
 	const char * pe;
-	int mul;
+	int mul = 1;
 	int offset = 0;
 
 	if (pz[0] == 'Z') {
