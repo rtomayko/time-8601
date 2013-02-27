@@ -38,7 +38,7 @@ _strtol(const char *str, const char **out)
 }
 
 static VALUE
-time_iso8601_strict(const char * str, int len)
+time_iso8601_strict(const char * str)
 {
 	const char * ps = str;
 	const char * pe;
@@ -76,7 +76,7 @@ time_iso8601_strict(const char * str, int len)
 	if (pe == ps || tdata.tm_sec < 0 || tdata.tm_sec > 61)
 		return Qnil;
 
-	if (pe >= (str + len))
+	if (*pe == '\0')
 	{
 		return rb_time_new(mktime(&tdata), 0);
 	}
@@ -133,11 +133,13 @@ rb_time_iso8601_strict(VALUE self, VALUE str)
 {
 	VALUE time;
 
+	Check_Type(str, T_STRING);
+
 	/* minumum possible ISO8601 strict time value */
 	if (RSTRING_LEN(str) < 16)
 		rb_raise(rb_eArgError, "invalid date: %p", (void*)str);
 
-	time = time_iso8601_strict(RSTRING_PTR(str), RSTRING_LEN(str));
+	time = time_iso8601_strict(StringValueCStr(str));
 
 	if (NIL_P(time))
 		rb_raise(rb_eArgError, "invalid date: %p", (void*)str);
@@ -146,7 +148,7 @@ rb_time_iso8601_strict(VALUE self, VALUE str)
 }
 
 static time_t
-time_iso8601_strptime(const char * str, int len)
+time_iso8601_strptime(const char * str)
 {
 	struct tm time;
 	char * pe;
@@ -170,11 +172,13 @@ rb_time_iso8601_strptime(VALUE self, VALUE str)
 	VALUE time;
 	time_t t;
 
+	Check_Type(str, T_STRING);
+
 	/* minumum possible ISO8601 strict time value */
 	if (RSTRING_LEN(str) < 16)
 		rb_raise(rb_eArgError, "invalid date: %p", (void*)str);
 
-	t = time_iso8601_strptime(RSTRING_PTR(str), RSTRING_LEN(str));
+	t = time_iso8601_strptime(StringValueCStr(str));
 
 	if (t == -1)
 		rb_raise(rb_eArgError, "invalid date: %p", (void*)str);
