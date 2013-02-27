@@ -15,33 +15,6 @@ static ID id_utc;             /* :utc */
 static ID id_localtime;       /* :localtime */
 static ID id_mktime;          /* :mktime */
 
-/* This is the Linux+v3.8 mktime. Does not account for leap seconds.
- *
- * http://lxr.linux.no/linux+v3.8/kernel/time.c#L313
- *
- * Copyright Linux people.
- */
-time_t
-time_iso8601_mktime(struct tm * time)
-{
-	unsigned int mon = time->tm_mon, year = time->tm_year;
-
-	/* 1..12 -> 11,12,1..10 */
-	if (0 >= (int) (mon -= 2)) {
-		mon += 12;      /* Puts Feb last since it has leap day */
-		year -= 1;
-	}
-	year += 1900;
-	mon += 1;
-
-	return ((((unsigned long)
-	            (year/4 - year/100 + year/400 + 367*mon/12 + time->tm_mday) +
-	            year*365 - 719499
-	                  )*24 + time->tm_hour   /* now have hours */
-	                  )*60 + time->tm_min    /* now have minutes */
-	                  )*60 + time->tm_sec;   /* finally seconds */
-}
-
 static int
 time_iso8601_strzone(const char * pz, int len)
 {
@@ -71,7 +44,8 @@ time_iso8601_strptime(const char * str, int len)
 
 	if ((pz = strptime(str, "%FT%T", &tm)))
 	{
-		time_t t = time_iso8601_mktime(&tm);
+		tm.tm_isdst = -1;
+		time_t t = mktime(&tm);
 		VALUE time;
 
 		/* need to parse zone info */
@@ -113,8 +87,6 @@ rb_time_iso8601_at(VALUE self, VALUE str)
 		rb_raise(rb_eArgError, "invalid date: %p", (void*)str);
 
 	time = time_iso8601_strptime(StringValueCStr(str), RSTRING_LEN(str));
-
-	/* rb_funcall(time, id_utc, 0); */
 
 	return time;
 }
