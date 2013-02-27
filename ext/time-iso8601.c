@@ -17,96 +17,61 @@ static ID id_new;             /* :new */
 static ID id_utc;             /* :utc */
 static ID id_mktime;          /* :mktime */
 
-static VALUE
-time_iso8601_strict(char * str, int len)
+/*
+static VALUE time_iso8601_mktime(tm * time)
 {
-	VALUE time = Qnil;
-	char * ps = str;
-	char * pe;
-	int year, mon, day, hour, min, sec;
-
-	year = strtol(ps, &pe, 10);
-	if (pe > ps && *pe == '-')
+}
+else
+{
+	ps = pe;
+	switch(*ps)
 	{
-		ps = pe + 1;
-		mon = strtol(ps, &pe, 10);
-		if (pe > ps && *pe == '-' && mon >= 1 && mon <= 12)
-		{
-			ps = pe + 1;
-			day = strtol(ps, &pe, 10);
-			if (pe > ps && *pe == 'T' && day >= 1 && day <= 31)
-			{
-				ps = pe + 1;
-				hour = strtol(ps, &pe, 10);
-				if (pe > ps && *pe == ':' && hour >= 0 && hour <= 24)
-				{
-					ps = pe + 1;
-					min = strtol(ps, &pe, 10);
-					if (pe > ps && *pe == ':' && min >= 0 && min <= 61)
-					{
-						ps = pe + 1;
-						sec = strtol(ps, &pe, 10);
-						if (pe > ps && sec >= 0 && sec <= 61)
-						{
-							if (pe >= (str + len))
-							{
-								/* no timezone, use local time */
-								time = rb_funcall(rb_cTime, id_mktime, 6,
-								                  INT2FIX(year), INT2FIX(mon), INT2FIX(day),
-								                  INT2FIX(hour), INT2FIX(min), INT2FIX(sec));
-							}
-							else
-							{
-								ps = pe;
-								switch(*ps)
-								{
-									case 'Z': /* utc timezone */
-										time = rb_funcall(rb_cTime, id_utc, 6,
-										                  INT2FIX(year), INT2FIX(mon), INT2FIX(day),
-										                  INT2FIX(hour), INT2FIX(min), INT2FIX(sec));
-										break;
+		case 'Z':
+			time = rb_funcall(rb_cTime, id_utc, 6,
+			                  INT2FIX(year), INT2FIX(mon), INT2FIX(day),
+			                  INT2FIX(hour), INT2FIX(min), INT2FIX(sec));
+			break;
 
-									case '+':
-									case '-':
-										time = rb_funcall(rb_cTime, id_new, 7,
-										                  INT2FIX(year), INT2FIX(mon), INT2FIX(day),
-										                  INT2FIX(hour), INT2FIX(min), INT2FIX(sec),
-										                  rb_str_new(ps, len - (ps - str)));
-										break;
+		case '+':
+		case '-':
+			time = rb_funcall(rb_cTime, id_new, 7,
+			                  INT2FIX(year), INT2FIX(mon), INT2FIX(day),
+			                  INT2FIX(hour), INT2FIX(min), INT2FIX(sec),
+			                  rb_str_new(ps, len - (ps - str)));
+			break;
 
-									default:
-										return Qnil;
-								}
-							}
+		default:
+			return Qnil;
+	}
+}
+*/
 
-						}
-					}
-				}
-			}
-		}
+/* This is the Linux+v3.8 mktime. Does not account for leap seconds.
+ *
+ * http://lxr.linux.no/linux+v3.8/kernel/time.c#L313
+ *
+ * Copyright Linux people.
+ */
+time_t
+time_iso8601_mktime(struct tm * time)
+{
+	unsigned int mon = time->tm_mon, year = time->tm_year;
+
+	/* 1..12 -> 11,12,1..10 */
+	if (0 >= (int) (mon -= 2)) {
+		mon += 12;      /* Puts Feb last since it has leap day */
+		year -= 1;
 	}
 
-	return time;
+	return ((((unsigned long)
+	            (year/4 - year/100 + year/400 + 367*mon/12 + time->tm_mday) +
+	            year*365 - 719499
+	                  )*24 + time->tm_hour   /* now have hours */
+	                  )*60 + time->tm_min    /* now have minutes */
+	                  )*60 + time->tm_sec;   /* finally seconds */
 }
 
 static VALUE
-rb_time_iso8601_strict(VALUE self, VALUE str)
-{
-	VALUE time;
-
-	/* minumum possible ISO8601 strict time value */
-	if (RSTRING_LEN(str) < 16)
-		rb_raise(rb_eArgError, "invalid date: %p", (void*)str);
-
-	time = time_iso8601_strict(StringValueCStr(str), RSTRING_LEN(str));
-
-	if (NIL_P(time))
-		rb_raise(rb_eArgError, "invalid date: %p", (void*)str);
-
-	return time;
-}
-
-static time_t
 time_iso8601_strptime(const char * str, int len)
 {
 	struct tm time;
@@ -115,10 +80,10 @@ time_iso8601_strptime(const char * str, int len)
 	if ((pe = strptime(str, "%FT%T", &time)))
 	{
 		/* need to parse zone info */
-		/* if (pe - str < len) */
+		if (pe - str < len)
 
 		time.tm_isdst = -1;
-		return mktime(&time);
+		return time_iso8601_mktime(&time);
 	}
 	else
 	{
@@ -127,7 +92,7 @@ time_iso8601_strptime(const char * str, int len)
 }
 
 static VALUE
-rb_time_iso8601_strptime(VALUE self, VALUE str)
+rb_time_iso8601_at(VALUE self, VALUE str)
 {
 	VALUE time;
 	time_t t;
@@ -141,8 +106,8 @@ rb_time_iso8601_strptime(VALUE self, VALUE str)
 	if (t == -1)
 		rb_raise(rb_eArgError, "invalid date: %p", (void*)str);
 
-	/*time = rb_funcall(rb_cTime, id_at, 1, INT2FIX((int)t));
-	rb_funcall(time, id_utc, 0);*/
+	time = rb_funcall(rb_cTime, id_at, 1, INT2FIX((int)t));
+	/* rb_funcall(time, id_utc, 0); */
 
 	return Qnil;
 }
@@ -153,8 +118,7 @@ Init_time_iso8601() {
 	rb_require("time");
 
 	/* Time class methods */
-	rb_define_singleton_method(rb_cTime, "iso8601_strict",   rb_time_iso8601_strict, 1);
-	rb_define_singleton_method(rb_cTime, "iso8601_strptime", rb_time_iso8601_strptime, 1);
+	rb_define_singleton_method(rb_cTime, "iso8601_at", rb_time_iso8601_at, 1);
 
 	/* symbols */
 	id_at = rb_intern("at");

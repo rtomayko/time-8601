@@ -65,12 +65,8 @@ bm(40) do |benchmark|
     puts
     puts "Parsing #{string} (#{iterations}x)"
 
-    benchmark.report "  Time::iso8601_strict" do
-      iterations.times { Time.iso8601_strict(string) }
-    end
-
-    benchmark.report "  Time::iso8601_strptime" do
-      iterations.times { Time.iso8601_strptime(string) }
+    benchmark.report "  Time::iso8601_at" do
+      iterations.times { Time.iso8601_at(string) }
     end
 
     benchmark.report "  Time::iso8601" do
