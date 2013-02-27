@@ -16,76 +16,91 @@ static ID id_new;             /* :new */
 static ID id_utc;             /* :utc */
 static ID id_mktime;          /* :mktime */
 
+static inline int
+_isdigit(char c)
+{
+	return (c >= '0' && c <= '9');
+}
+
+static int
+_strtol(const char *str, const char **out)
+{
+	int n = 0;
+
+	while (_isdigit(*str))
+	{
+		n *= 10;
+		n += *str++ - '0';
+	}
+
+	*out = str;
+	return n;
+}
+
 static VALUE
-time_iso8601_strict(char * str, int len)
+time_iso8601_strict(const char * str, int len)
 {
 	VALUE time = Qnil;
-	char * ps = str;
-	char * pe;
+	const char * ps = str;
+	const char * pe;
 	int year, mon, day, hour, min, sec;
 
-	year = strtol(ps, &pe, 10);
-	if (pe > ps && *pe == '-')
+	year = _strtol(ps, &pe);
+	if (pe == ps || *pe != '-')
+		return Qnil;
+	
+	ps = pe + 1;
+	mon = _strtol(ps, &pe);
+	if (pe == ps || *pe != '-' || mon < 1 || mon > 12)
+		return Qnil;
+
+	ps = pe + 1;
+	day = _strtol(ps, &pe);
+	if (pe == ps || *pe != 'T' || day < 1 || day > 31)
+		return Qnil;
+
+	ps = pe + 1;
+	hour = _strtol(ps, &pe);
+	if (pe == ps || *pe != ':' || hour < 0 || hour > 24)
+		return Qnil;
+
+	ps = pe + 1;
+	min = _strtol(ps, &pe);
+	if (pe == ps || *pe != ':' || min < 0 || min > 61)
+		return Qnil;
+
+	ps = pe + 1;
+	sec = _strtol(ps, &pe);
+	if (pe == ps || sec < 0 || sec > 61)
+		return Qnil;
+
+	if (pe >= (str + len))
 	{
-		ps = pe + 1;
-		mon = strtol(ps, &pe, 10);
-		if (pe > ps && *pe == '-' && mon >= 1 && mon <= 12)
+		/* no timezone, use local time */
+		return rb_funcall(rb_cTime, id_mktime, 6,
+						  INT2FIX(year), INT2FIX(mon), INT2FIX(day),
+						  INT2FIX(hour), INT2FIX(min), INT2FIX(sec));
+	}
+	else
+	{
+		ps = pe;
+		switch(*ps)
 		{
-			ps = pe + 1;
-			day = strtol(ps, &pe, 10);
-			if (pe > ps && *pe == 'T' && day >= 1 && day <= 31)
-			{
-				ps = pe + 1;
-				hour = strtol(ps, &pe, 10);
-				if (pe > ps && *pe == ':' && hour >= 0 && hour <= 24)
-				{
-					ps = pe + 1;
-					min = strtol(ps, &pe, 10);
-					if (pe > ps && *pe == ':' && min >= 0 && min <= 61)
-					{
-						ps = pe + 1;
-						sec = strtol(ps, &pe, 10);
-						if (pe > ps && sec >= 0 && sec <= 61)
-						{
-							if (pe >= (str + len))
-							{
-								/* no timezone, use local time */
-								time = rb_funcall(rb_cTime, id_mktime, 6,
-								                  INT2FIX(year), INT2FIX(mon), INT2FIX(day),
-								                  INT2FIX(hour), INT2FIX(min), INT2FIX(sec));
-							}
-							else
-							{
-								ps = pe;
-								switch(*ps)
-								{
-									case 'Z': /* utc timezone */
-										time = rb_funcall(rb_cTime, id_utc, 6,
-										                  INT2FIX(year), INT2FIX(mon), INT2FIX(day),
-										                  INT2FIX(hour), INT2FIX(min), INT2FIX(sec));
-										break;
+			case 'Z': /* utc timezone */
+				return rb_funcall(rb_cTime, id_utc, 6,
+								  INT2FIX(year), INT2FIX(mon), INT2FIX(day),
+								  INT2FIX(hour), INT2FIX(min), INT2FIX(sec));
 
-									case '+':
-									case '-':
-										time = rb_funcall(rb_cTime, id_new, 7,
-										                  INT2FIX(year), INT2FIX(mon), INT2FIX(day),
-										                  INT2FIX(hour), INT2FIX(min), INT2FIX(sec),
-										                  rb_str_new(ps, len - (ps - str)));
-										break;
-
-									default:
-										return Qnil;
-								}
-							}
-
-						}
-					}
-				}
-			}
+			case '+':
+			case '-':
+				return rb_funcall(rb_cTime, id_new, 7,
+								  INT2FIX(year), INT2FIX(mon), INT2FIX(day),
+								  INT2FIX(hour), INT2FIX(min), INT2FIX(sec),
+								  rb_str_new(ps, len - (ps - str)));
 		}
 	}
 
-	return time;
+	return Qnil;
 }
 
 static VALUE
