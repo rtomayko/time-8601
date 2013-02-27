@@ -82,10 +82,7 @@ time_iso8601_strptime(const char * str, int len)
 				/* utc time */
 				t -= utc_offset;
 				time = rb_funcall(rb_cTime, id_at, 1, INT2FIX(t));
-
-				struct time_object *tobj;
-				GetTimeval(time, tobj);
-				TIME_SET_UTC(tobj);
+				rb_funcall(time, id_utc, 0);
 			} else {
 				/* explicit zone */
 				t -= utc_offset;
