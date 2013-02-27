@@ -140,18 +140,18 @@ time_iso8601_parse(const char * str)
 	{
 		utc_time = timegm(&tdata);
 		if (utc_offset == 0) {
-			time = rb_funcall(rb_cTime, id_at, 1, INT2FIX(utc_time));
+			time = rb_time_new(utc_time, 0);
 			rb_funcall(time, id_utc, 0);
 		}
 		else if (utc_offset == timezone)
 		{
 			utc_time += timezone;
-			time = rb_funcall(rb_cTime, id_at, 1, INT2FIX(utc_time));
+			time = rb_time_new(utc_time, 0);
 		}
 		else
 		{
 			utc_time -= utc_offset;
-			time = rb_funcall(rb_cTime, id_at, 1, INT2FIX(utc_time));
+			time = rb_time_new(utc_time, 0);
 			rb_funcall(time, id_localtime, 1, INT2FIX(utc_offset));
 		}
 	}
