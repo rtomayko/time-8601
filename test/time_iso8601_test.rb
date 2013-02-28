@@ -92,7 +92,7 @@ class TimeISO8601Test < MiniTest::Unit::TestCase
   end
 
   def test_really_small_times
-    assert expect = Time.iso8601("1-01-01T00:00:00Z")
-    assert_equal expect, Time.iso8601_at("1-01-01T00:00:00Z")
+    assert expect = Time.iso8601("0000-01-01T00:00:00Z")
+    assert_equal expect, Time.iso8601_at("0000-01-01T00:00:00Z")
   end
 end

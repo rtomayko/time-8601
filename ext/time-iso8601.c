@@ -88,13 +88,13 @@ _strtime(const char * str, struct tm * tdata, int * utc_offset)
 
 	tdata->tm_isdst = -1;
 
-	tdata->tm_year = _strtol(ps, &pe) - 1900;
+	tdata->tm_year = _strtol(ps, &pe);
 	if (pe == ps || *pe != '-')
 		return 0;
 
 	ps = pe + 1;
-	tdata->tm_mon = _strtol(ps, &pe) - 1;
-	if (pe == ps || *pe != '-' || tdata->tm_mon < 0 || tdata->tm_mon > 11)
+	tdata->tm_mon = _strtol(ps, &pe);
+	if (pe == ps || *pe != '-' || tdata->tm_mon < 1 || tdata->tm_mon > 12)
 		return 0;
 
 	ps = pe + 1;
@@ -134,29 +134,29 @@ static VALUE
 time_iso8601_parse(const char * str)
 {
 	VALUE time;
-	time_t utc_time;
 	int utc_offset;
 	struct tm tdata;
 	memset(&tdata, 0x0, sizeof(struct tm));
 
 	if (_strtime(str, &tdata, &utc_offset))
 	{
-		utc_time = mktime(&tdata) - timezone;
-
 		if (utc_offset == 0) {
-			time = rb_time_new(utc_time, 0);
-			rb_funcall(time, id_utc, 0);
+			time = rb_funcall(rb_cTime, id_utc, 6,
+			                  INT2FIX(tdata.tm_year), INT2FIX(tdata.tm_mon), INT2FIX(tdata.tm_mday),
+			                  INT2FIX(tdata.tm_hour), INT2FIX(tdata.tm_min), INT2FIX(tdata.tm_sec));
 		}
 		else if (utc_offset == timezone)
 		{
-			utc_time += timezone;
-			time = rb_time_new(utc_time, 0);
+			time = rb_funcall(rb_cTime, id_mktime, 6,
+			                  INT2FIX(tdata.tm_year), INT2FIX(tdata.tm_mon), INT2FIX(tdata.tm_mday),
+			                  INT2FIX(tdata.tm_hour), INT2FIX(tdata.tm_min), INT2FIX(tdata.tm_sec));
 		}
 		else
 		{
-			utc_time -= utc_offset;
-			time = rb_time_new(utc_time, 0);
-			rb_funcall(time, id_localtime, 1, INT2FIX(utc_offset));
+			time = rb_funcall(rb_cTime, id_new, 7,
+			                  INT2FIX(tdata.tm_year), INT2FIX(tdata.tm_mon), INT2FIX(tdata.tm_mday),
+			                  INT2FIX(tdata.tm_hour), INT2FIX(tdata.tm_min), INT2FIX(tdata.tm_sec),
+			                  INT2FIX(utc_offset));
 		}
 	}
 	else
